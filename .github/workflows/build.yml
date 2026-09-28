@@ -39,10 +39,11 @@ jobs:
             || echo '{}' > "$RUNNER_TEMP/previous-manifest.json"
 
       - name: Normalize + manifest
-        run: python3 scripts/build_water_sources.py \
-               --input "$RUNNER_TEMP/water-raw.geojson" \
-               --previous-manifest "$RUNNER_TEMP/previous-manifest.json" \
-               --outdir "$RUNNER_TEMP/dist"
+        run: |
+          python3 scripts/build_water_sources.py \
+            --input "$RUNNER_TEMP/water-raw.geojson" \
+            --previous-manifest "$RUNNER_TEMP/previous-manifest.json" \
+            --outdir "$RUNNER_TEMP/dist"
 
       - name: Commit results
         run: |
