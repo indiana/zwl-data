@@ -1,0 +1,56 @@
+name: Build water data
+on:
+  schedule:
+    - cron: '0 3 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install osmium-tool
+        run: sudo apt-get update && sudo apt-get install -y osmium-tool
+
+      - name: Download Poland extract (Geofabrik)
+        run: curl -L --fail -o "$RUNNER_TEMP/poland.osm.pbf" https://download.geofabrik.de/europe/poland-latest.osm.pbf
+
+      - name: Filter water tags
+        run: |
+          osmium tags-filter "$RUNNER_TEMP/poland.osm.pbf" \
+            nwr/amenity=drinking_water \
+            nwr/man_made=water_tap \
+            nwr/amenity=water_point \
+            nwr/natural=spring \
+            nwr/man_made=water_well \
+            nwr/amenity=fountain \
+            -o "$RUNNER_TEMP/water.osm.pbf" --overwrite
+
+      - name: Export points to GeoJSON
+        run: osmium export "$RUNNER_TEMP/water.osm.pbf" -o "$RUNNER_TEMP/water-raw.geojson" --overwrite --geometry-types=point
+
+      - name: Read previous manifest (monotonic version)
+        run: |
+          test -f manifest.json && cp manifest.json "$RUNNER_TEMP/previous-manifest.json" \
+            || echo '{}' > "$RUNNER_TEMP/previous-manifest.json"
+
+      - name: Normalize + manifest
+        run: python3 scripts/build_water_sources.py \
+               --input "$RUNNER_TEMP/water-raw.geojson" \
+               --previous-manifest "$RUNNER_TEMP/previous-manifest.json" \
+               --outdir "$RUNNER_TEMP/dist"
+
+      - name: Commit results
+        run: |
+          cp "$RUNNER_TEMP"/dist/water-*.geojson "$RUNNER_TEMP"/dist/manifest.json .
+          git config user.name  "zwl-data-bot"
+          git config user.email "zwl-data-bot@users.noreply.github.com"
+          git status --porcelain
+          git add -A
+          VERSION=$(python3 -c 'import json;print(json.load(open("manifest.json"))["version"])')
+          git commit -m "water data ${VERSION}" || echo "no changes"
+          git push
