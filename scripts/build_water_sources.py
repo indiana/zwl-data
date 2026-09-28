@@ -62,6 +62,8 @@ def identify(feature, tags):
     if raw_id is None:
         raw_id = props.get("osm_id")
     if raw_id is None:
+        raw_id = props.get("id")
+    if raw_id is None:
         raw_id = feature.get("id")
     if raw_id is None:
         return None, None
@@ -70,17 +72,23 @@ def identify(feature, tags):
     if raw_type is None:
         raw_type = props.get("osm_type")
     if raw_type is None:
+        raw_type = props.get("type")
+    if raw_type is None:
         raw_type = tags.get("type")
     if raw_type is None:
         raw_type = feature.get("type")
-    if raw_type is None:
-        return None, None
 
-    prefix = TYPE_PREFIX.get(str(raw_type).lower())
+    raw_id_text = str(raw_id)
+    prefix = TYPE_PREFIX.get(str(raw_type).lower()) if raw_type is not None else None
     if prefix is None:
+        if len(raw_id_text) > 1 and raw_id_text[0] in ("n", "w", "r", "a") and raw_id_text[1:].isdigit():
+            return raw_id_text, raw_id_text[0]
         return None, None
 
-    return "%s%s" % (prefix, raw_id), prefix
+    if len(raw_id_text) > 1 and raw_id_text[0] in ("n", "w", "r", "a") and raw_id_text[1:].isdigit():
+        return raw_id_text, raw_id_text[0]
+
+    return "%s%s" % (prefix, raw_id_text), prefix
 
 
 def drinking_water_status(tags, type_name):
@@ -262,7 +270,8 @@ def main(argv):
         json.dump(manifest, handle, ensure_ascii=False, indent=2)
         handle.write("\n")
 
-    print("version=%d count=%d bytes=%d file=%s" % (version, len(features), len(payload), file_name))
+    print("raw_features=%d count=%d version=%d bytes=%d file=%s"
+          % (len(raw_features), len(features), version, len(payload), file_name))
     return 0
 
 

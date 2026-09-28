@@ -31,7 +31,7 @@ jobs:
             -o "$RUNNER_TEMP/water.osm.pbf" --overwrite
 
       - name: Export points to GeoJSON
-        run: osmium export "$RUNNER_TEMP/water.osm.pbf" -o "$RUNNER_TEMP/water-raw.geojson" --overwrite --geometry-types=point
+        run: osmium export "$RUNNER_TEMP/water.osm.pbf" -o "$RUNNER_TEMP/water-raw.geojson" --overwrite --geometry-types=point -a type,id
 
       - name: Read previous manifest (monotonic version)
         run: |
