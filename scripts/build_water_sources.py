@@ -24,6 +24,47 @@ TAG_RULES = (
     ("amenity", "fountain", "FOUNTAIN"),
 )
 
+WATER_ON_SITE_RULES = (
+    ("amenity", "shelter"),
+    ("tourism", "camp_site"),
+    ("tourism", "alpine_hut"),
+    ("leisure", "picnic_table"),
+)
+
+BOTTLE_VALUES = frozenset(("yes", "designated"))
+
+OPTIONAL_TEXT_TAGS = (
+    ("pump", "pump"),
+    ("seasonal", "seasonal"),
+    ("intermittent", "intermittent"),
+    ("fountain", "fountain"),
+    ("fee", "fee"),
+    ("openingHours", "opening_hours"),
+    ("operator", "operator"),
+    ("description", "description"),
+    ("bottle", "bottle"),
+)
+
+PROPERTY_KEYS = (
+    "osmId",
+    "type",
+    "name",
+    "drinkingWater",
+    "drinkingWaterRaw",
+    "verified",
+    "depthMeters",
+    "notes",
+    "pump",
+    "seasonal",
+    "intermittent",
+    "fountain",
+    "fee",
+    "openingHours",
+    "operator",
+    "description",
+    "bottle",
+)
+
 CONFIRMED_TYPES = frozenset(("DRINKING_WATER", "WATER_TAP", "WATER_POINT"))
 
 YES_VALUES = frozenset(("yes", "true", "1"))
@@ -49,10 +90,34 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
+def tag_value(tags, key):
+    raw = tags.get(key)
+    if raw is None:
+        return None
+    return str(raw).strip().lower()
+
+
+def optional_text(tags, key):
+    raw = tags.get(key)
+    if raw is None:
+        return None
+    value = str(raw).strip()
+    return value if value else None
+
+
 def feature_type(tags):
     for key, value, type_name in TAG_RULES:
-        if tags.get(key) == value:
+        if tag_value(tags, key) == value:
+            if type_name == "FOUNTAIN" and tag_value(tags, "drinking_water") not in YES_VALUES:
+                return None
             return type_name
+    for key, value in WATER_ON_SITE_RULES:
+        if tag_value(tags, key) == value:
+            if tag_value(tags, "drinking_water") in YES_VALUES:
+                return "WATER_ON_SITE"
+            return None
+    if tag_value(tags, "bottle") in BOTTLE_VALUES:
+        return "REFILL"
     return None
 
 
@@ -151,9 +216,6 @@ def normalize_feature(feature):
     if type_name is None:
         return None
 
-    if type_name == "FOUNTAIN" and str(tags.get("drinking_water", "")).strip().lower() not in YES_VALUES:
-        return None
-
     access = tags.get("access")
     if access is not None and str(access).strip().lower() in REJECTED_ACCESS:
         return None
@@ -174,7 +236,7 @@ def normalize_feature(feature):
     drinking = drinking_water_status(tags, type_name)
     depth = parse_depth(tags, type_name)
 
-    return {
+    feature = {
         "osmId": osm_id,
         "type": type_name,
         "name": name,
@@ -182,8 +244,12 @@ def normalize_feature(feature):
         "verified": False,
         "depthMeters": depth,
         "notes": None,
+        "drinkingWaterRaw": optional_text(tags, "drinking_water"),
         "_coordinates": (longitude, latitude),
     }
+    for prop, tag in OPTIONAL_TEXT_TAGS:
+        feature[prop] = optional_text(tags, tag)
+    return feature
 
 
 def build_geojson(features):
@@ -194,15 +260,7 @@ def build_geojson(features):
             {
                 "type": "Feature",
                 "geometry": {"type": "Point", "coordinates": [longitude, latitude]},
-                "properties": {
-                    "osmId": feature["osmId"],
-                    "type": feature["type"],
-                    "name": feature["name"],
-                    "drinkingWater": feature["drinkingWater"],
-                    "verified": feature["verified"],
-                    "depthMeters": feature["depthMeters"],
-                    "notes": feature["notes"],
-                },
+                "properties": {key: feature.get(key) for key in PROPERTY_KEYS},
             }
         )
     return {"type": "FeatureCollection", "features": output_features}

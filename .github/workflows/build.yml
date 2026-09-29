@@ -28,6 +28,11 @@ jobs:
             nwr/natural=spring \
             nwr/man_made=water_well \
             nwr/amenity=fountain \
+            nwr/amenity=shelter \
+            nwr/tourism=camp_site \
+            nwr/tourism=alpine_hut \
+            nwr/leisure=picnic_table \
+            nwr/bottle=yes \
             -o "$RUNNER_TEMP/water.osm.pbf" --overwrite
 
       - name: Export points to GeoJSON
