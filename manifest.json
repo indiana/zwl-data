@@ -1,10 +1,10 @@
 {
-  "version": 20260929,
-  "generatedAt": "2026-09-28T13:59:01Z",
-  "file": "water-20260929.geojson",
-  "sha256": "52a74ca40935dc310019d7799b3a152c6f2755a2e96b39e9a3bbee614c4b4c24",
-  "bytes": 2009128,
-  "count": 9026,
+  "version": 20260930,
+  "generatedAt": "2026-09-29T09:07:55Z",
+  "file": "water-20260930.geojson",
+  "sha256": "88b76b9d7720a1b4a5b19e8edde6c47f2c8d0d45816f6ad4d6d7a4d6f794a2b1",
+  "bytes": 3576357,
+  "count": 9070,
   "sources": [
     "OSM"
   ]
