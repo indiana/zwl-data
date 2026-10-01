@@ -16,8 +16,25 @@ jobs:
       - name: Install osmium-tool
         run: sudo apt-get update && sudo apt-get install -y osmium-tool
 
-      - name: Download Poland extract (Geofabrik)
-        run: curl -L --fail -o "$RUNNER_TEMP/poland.osm.pbf" https://download.geofabrik.de/europe/poland-latest.osm.pbf
+      - name: Download Poland extract
+        run: |
+          urls=(
+            "https://download.geofabrik.de/europe/poland-latest.osm.pbf"
+            "https://download.openstreetmap.fr/extracts/europe/poland-latest.osm.pbf"
+          )
+          for url in "${urls[@]}"; do
+            echo "Trying $url"
+            if curl -L --fail --max-redirs 5 --connect-timeout 20 --retry 2 --retry-delay 5 \
+                 -o "$RUNNER_TEMP/poland.osm.pbf" "$url" \
+               && [ -s "$RUNNER_TEMP/poland.osm.pbf" ] \
+               && head -c 200 "$RUNNER_TEMP/poland.osm.pbf" | grep -aq "OSMHeader"; then
+              echo "Downloaded $(stat -c%s "$RUNNER_TEMP/poland.osm.pbf") bytes from $url"
+              exit 0
+            fi
+            echo "Failed: $url"
+          done
+          echo "All download sources failed" >&2
+          exit 1
 
       - name: Filter water tags
         run: |
